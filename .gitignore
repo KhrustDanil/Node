@@ -1,0 +1,15 @@
+/node_modules
+
+uploads/
+
+*.log
+storage/filesUpload.log
+
+*.tmp
+*.temp
+
+storage/products.store.json
+
+*.csv
+
+README.md
