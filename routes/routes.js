@@ -7,10 +7,12 @@ import multer from 'multer';
 import csv from 'csv-parser';
 import Joi from 'joi';
 import products from '../storage/products.store.json' assert { type: 'json' };
+import { checkUserId } from '../middleware/checkUserId.js';
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 const eventEmitter = new EventEmitter();
+const PRODUCTS_FILE_PATH = 'storage/products.store.json';
 
 eventEmitter.on('fileUploadStart', () => {
   logEvent('File upload has started');
@@ -66,15 +68,15 @@ const userSchema = Joi.object({
     }),
 });
 
-
-
-router.post('/register', (req, res) => {
+router.post('/register', (req, res, next) => {
   try {
     const { email, name, password } = req.body;
     const { error } = userSchema.validate({ email, name, password });
 
     if (error) {
-      return res.status(400).json({ error: error.details[0].message });
+      const err = new Error(error.details[0].message);
+      err.status = 400;
+      throw err;
     }
 
     const newUser = { id: randomUUID(), email, name };
@@ -82,8 +84,7 @@ router.post('/register', (req, res) => {
 
     res.status(201).json({ message: 'User registered successfully' });
   } catch (error) {
-    console.error('Error during registration:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    next(error); 
   }
 });
 
@@ -95,25 +96,31 @@ router.get('/products', (req, res) => {
   }
 });
 
-router.get('/products/:productId', (req, res) => {
+router.get('/products/:productId', (req, res, next) => {
   try {
     const productId = parseInt(req.params.productId);
     const product = products.find((product) => product.id === productId);
-    if (!product) return res.status(404).json({ error: 'Product not found' });
+    if (!product) {
+      const err = new Error('Product not found');
+      err.status = 404;
+      throw err;
+    }
     res.json(product);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch product' });
+    next(error);
   }
 });
 
-router.put('/cart/:productId', (req, res) => {
+router.put('/cart/:productId', checkUserId, (req, res, next) => {
   try {
     const userId = req.headers['x-user-id'];
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
     const productId = parseInt(req.params.productId);
     const product = products.find((product) => product.id === productId);
-    if (!product) return res.status(404).json({ error: 'Product not found' });
+    if (!product) {
+      const err = new Error('Product not found');
+      err.status = 404;
+      throw err;
+    }
 
     let cart = carts.find((cart) => cart.userId === userId);
     if (!cart) {
@@ -123,15 +130,13 @@ router.put('/cart/:productId', (req, res) => {
     cart.products.push(product);
     res.status(200).json(cart);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update cart' });
+    next(error);
   }
 });
 
-router.delete('/cart/:productId', (req, res) => {
+router.delete('/cart/:productId', checkUserId, (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
     const productId = parseInt(req.params.productId);
     const cart = carts.find((cart) => cart.userId === userId);
     if (!cart) return res.status(404).json({ error: 'Cart not found' });
@@ -143,11 +148,9 @@ router.delete('/cart/:productId', (req, res) => {
   }
 });
 
-router.post('/cart/checkout', (req, res) => {
+router.post('/cart/checkout', checkUserId, (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
     const cart = carts.find((cart) => cart.userId === userId);
     if (!cart || cart.products.length === 0)
       return res.status(400).json({ error: 'Cart is empty' });
@@ -173,11 +176,11 @@ router.post('/product', (req, res) => {
   };
 
   products.push(newProduct);
-  fs.writeFileSync('storage/products.store.json', JSON.stringify(products, null, 2));
+  fs.writeFileSync(PRODUCTS_FILE_PATH, JSON.stringify(results, null, 2));
   res.status(201).json({ message: 'The product has been created successfully' });
 });
 
-router.post('/products/import', upload.single('file'), (req, res) => {
+router.post('/products/import', upload.single('file'), (req, res, next) => {
   try {
     const results = [];
     eventEmitter.emit('fileUploadStart');
@@ -192,23 +195,25 @@ router.post('/products/import', upload.single('file'), (req, res) => {
 
         const { error } = productSchema.validate(product);
         if (error) {
-          throw new Error(`Validation failed: ${error.details[0].message}`);
+          const err = new Error(`Validation failed: ${error.details[0].message}`);
+          err.status = 422;
+          throw err;
         }
 
         results.push(product);
       })
       .on('end', () => {
-        fs.writeFileSync('storage/products.store.json', JSON.stringify(results, null, 2));
+        fs.writeFileSync(PRODUCTS_FILE_PATH, JSON.stringify(results, null, 2));
         eventEmitter.emit('fileUploadEnd');
         res.status(200).json({ message: 'Products imported successfully' });
       })
       .on('error', (error) => {
         eventEmitter.emit('fileUploadFailed', error);
-        res.status(500).json({ error: 'File processing failed' });
+        next(error);
       });
   } catch (error) {
     eventEmitter.emit('fileUploadFailed', error);
-    res.status(500).json({ error: error.message || 'Failed to upload file' });
+    next(error);
   }
 });
 
