@@ -8,7 +8,7 @@ import csv from 'csv-parser';
 import Joi from 'joi';
 import products from '../storage/products.store.json' assert { type: 'json' };
 import { checkUserId } from '../middleware/checkUserId.js';
-import { BadRequest, NotFound, Unauthorized, UnprocessableEntity } from '../errors.js'; // Import custom error classes
+import { BadRequest, NotFound, Unauthorized, UnprocessableEntity } from '../error/errors.js';
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
