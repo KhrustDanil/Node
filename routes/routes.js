@@ -8,6 +8,7 @@ import csv from 'csv-parser';
 import Joi from 'joi';
 import products from '../storage/products.store.json' assert { type: 'json' };
 import { checkUserId } from '../middleware/checkUserId.js';
+import { BadRequest, NotFound, Unauthorized, UnprocessableEntity } from '../errors.js'; // Import custom error classes
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
@@ -74,9 +75,7 @@ router.post('/register', (req, res, next) => {
     const { error } = userSchema.validate({ email, name, password });
 
     if (error) {
-      const err = new Error(error.details[0].message);
-      err.status = 400;
-      throw err;
+      throw new BadRequest(error.details[0].message);
     }
 
     const newUser = { id: randomUUID(), email, name };
@@ -88,11 +87,11 @@ router.post('/register', (req, res, next) => {
   }
 });
 
-router.get('/products', (req, res) => {
+router.get('/products', (req, res, next) => {
   try {
     res.json(products);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch products' });
+    next(new BadRequest('Failed to fetch products'));
   }
 });
 
@@ -101,9 +100,7 @@ router.get('/products/:productId', (req, res, next) => {
     const productId = parseInt(req.params.productId);
     const product = products.find((product) => product.id === productId);
     if (!product) {
-      const err = new Error('Product not found');
-      err.status = 404;
-      throw err;
+      throw new NotFound('Product not found');
     }
     res.json(product);
   } catch (error) {
@@ -117,9 +114,7 @@ router.put('/cart/:productId', checkUserId, (req, res, next) => {
     const productId = parseInt(req.params.productId);
     const product = products.find((product) => product.id === productId);
     if (!product) {
-      const err = new Error('Product not found');
-      err.status = 404;
-      throw err;
+      throw new NotFound('Product not found');
     }
 
     let cart = carts.find((cart) => cart.userId === userId);
@@ -134,26 +129,29 @@ router.put('/cart/:productId', checkUserId, (req, res, next) => {
   }
 });
 
-router.delete('/cart/:productId', checkUserId, (req, res) => {
+router.delete('/cart/:productId', checkUserId, (req, res, next) => {
   try {
     const userId = req.headers['x-user-id'];
     const productId = parseInt(req.params.productId);
     const cart = carts.find((cart) => cart.userId === userId);
-    if (!cart) return res.status(404).json({ error: 'Cart not found' });
+    if (!cart) {
+      throw new NotFound('Cart not found');
+    }
 
     cart.products = cart.products.filter((product) => product.id !== productId);
     res.status(200).json(cart);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to remove product from cart' });
+    next(error);
   }
 });
 
-router.post('/cart/checkout', checkUserId, (req, res) => {
+router.post('/cart/checkout', checkUserId, (req, res, next) => {
   try {
     const userId = req.headers['x-user-id'];
     const cart = carts.find((cart) => cart.userId === userId);
-    if (!cart || cart.products.length === 0)
-      return res.status(400).json({ error: 'Cart is empty' });
+    if (!cart || cart.products.length === 0) {
+      throw new BadRequest('Cart is empty');
+    }
 
     const totalPrice = cart.products.reduce((sum, product) => sum + product.price, 0);
     const order = { id: randomUUID(), userId, products: cart.products, totalPrice };
@@ -162,22 +160,26 @@ router.post('/cart/checkout', checkUserId, (req, res) => {
     cart.products = [];
     res.status(201).json(order);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create order' });
+    next(error);
   }
 });
 
-router.post('/product', (req, res) => {
-  const { error } = productSchema.validate(req.body);
-  if (error) return res.status(400).json({ error: error.details[0].message });
+router.post('/product', (req, res, next) => {
+  try {
+    const { error } = productSchema.validate(req.body);
+    if (error) throw new UnprocessableEntity(error.details[0].message);
 
-  const newProduct = {
-    id: randomUUID(),
-    ...req.body,
-  };
+    const newProduct = {
+      id: randomUUID(),
+      ...req.body,
+    };
 
-  products.push(newProduct);
-  fs.writeFileSync(PRODUCTS_FILE_PATH, JSON.stringify(results, null, 2));
-  res.status(201).json({ message: 'The product has been created successfully' });
+    products.push(newProduct);
+    fs.writeFileSync(PRODUCTS_FILE_PATH, JSON.stringify(products, null, 2));
+    res.status(201).json({ message: 'The product has been created successfully' });
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.post('/products/import', upload.single('file'), (req, res, next) => {
@@ -195,9 +197,7 @@ router.post('/products/import', upload.single('file'), (req, res, next) => {
 
         const { error } = productSchema.validate(product);
         if (error) {
-          const err = new Error(`Validation failed: ${error.details[0].message}`);
-          err.status = 422;
-          throw err;
+          throw new UnprocessableEntity(`Validation failed: ${error.details[0].message}`);
         }
 
         results.push(product);
