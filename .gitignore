@@ -1,0 +1,14 @@
+/node_modules
+/dist
+
+uploads/
+
+*.log
+
+*.tmp
+*.temp
+
+
+*.csv
+
+README.md
