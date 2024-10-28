@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { User, users } from './storage/storage';
+import { User, users, UserRole } from './storage/storage';
 import { hashPassword } from './utils/bcrypt';
 import dotenv from 'dotenv';
 
@@ -19,7 +19,7 @@ export const createAdmin = async () => {
     email: ADMIN_EMAIL,
     name: ADMIN_NAME,
     passwordHash,
-    role: 'ADMIN',
+    role: UserRole.ADMIN,
   };
 
   users.push(adminUser);

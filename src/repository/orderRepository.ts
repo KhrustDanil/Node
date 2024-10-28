@@ -1,11 +1,11 @@
-import { orders, Product } from '../storage/storage';
+import { orders, Product, Order } from '../storage/storage';
 
 export class OrderRepository {
-  getOrdersByUserId(userId: string) {
+  getOrdersByUserId(userId: string): Order[] {
     return orders.filter(order => order.userId === userId);
   }
 
-  createOrder(userId: string, products: Product[]) {
+  createOrder(userId: string, products: Product[]): Order {
     const newOrder = {
       id: Date.now().toString(),
       userId,

@@ -17,7 +17,7 @@ export class CartRepository {
     return cart;
   }
 
-  clearCart(userId: string) {
+  clearCart(userId: string): void {
     const cartIndex = carts.findIndex(cart => cart.userId === userId);
     if (cartIndex !== -1) {
       carts[cartIndex].products = [];

@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
 import { BadRequest, Unauthorized } from '../error/errors';
 import Joi from 'joi';
-import { users, User } from '../storage/storage';
+import { users, User, UserRole } from '../storage/storage';
 import { hashPassword, comparePassword } from '../utils/bcrypt';
 
 
@@ -38,8 +38,8 @@ export const registerUser = async (req: Request, res: Response, next: NextFuncti
       throw new BadRequest(error.details[0].message);
     }
 
-    const passwordHash = await hashPassword(password);  // Хешування пароля
-    const newUser: User = { id: randomUUID(), email, name, passwordHash, role: 'CUSTOMER' };
+    const passwordHash = await hashPassword(password);
+    const newUser: User = { id: randomUUID(), email, name, passwordHash, role: UserRole.CUSTOMER };
     users.push(newUser);
 
     res.status(201).json({ message: 'User registered successfully' });
@@ -53,15 +53,32 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
     const { email, password } = req.body;
     const user = users.find((user) => user.email === email);
 
-    if (!user || !(await comparePassword(password, user.passwordHash))) {
+    const isPasswordMatch = user && (await comparePassword(password, user.passwordHash));
+
+    if (!user || !isPasswordMatch) {
       throw new Unauthorized('Invalid credentials');
     }
 
-    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET || 'secret', {
-      expiresIn: '1h',
+    const jwtSecret = process.env.JWT_SECRET;
+    
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET is not defined in environment variables');
+    }
+
+    const token = jwt.sign(
+      { userId: user.id, role: user.role },
+      jwtSecret,
+      { expiresIn: '1h' }
+    );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', 
+      maxAge: 3600000,
+      sameSite: 'strict',
     });
 
-    res.json({ token });
+    res.status(200).json({ message: 'Logged in successfully' });
   } catch (error) {
     next(error);
   }

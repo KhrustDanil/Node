@@ -22,7 +22,19 @@ export interface Cart {
   products: Product[];
 }
 
+export interface Order {
+  id: string;
+  userId: string;
+  products: Product[];
+  status: string;
+}
+
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  CUSTOMER = 'CUSTOMER',
+}
+
 export const products: Product[] = productsData;
 export const users: User[] = [];
 export const carts: Cart[] = [];
-export const orders: any[] = [];
+export const orders: Order[] = [];

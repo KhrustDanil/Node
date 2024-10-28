@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { Unauthorized } from '../error/errors';
-import { users } from '../storage/storage';
+import { users, UserRole } from '../storage/storage';
 
 const SECRET_KEY = process.env.JWT_SECRET || 'secret';  
 
@@ -24,10 +24,11 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
     });
 };
 
-export const authorizeAdmin = (req: Request, res: Response, next: NextFunction) => {
-    if (req.role !== 'ADMIN') {
-        throw new Unauthorized('Admin access is required');
-    }
-    next();
-};
-
+export const authorizeAdmin = (requiredRole: UserRole) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      if (req.role !== requiredRole) {
+        throw new Unauthorized(`${requiredRole} access is required`);
+      }
+      next();
+    };
+  };

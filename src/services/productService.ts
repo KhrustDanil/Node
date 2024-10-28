@@ -40,14 +40,27 @@ export class ProductService {
     return new Promise((resolve, reject) => {
         const results: Product[] = [];
         const readStream = fs.createReadStream(file.path);
-        
-        // Читаємо старі дані з файлу
+
         let existingData: Product[] = [];
-        try {
-            const fileContent = fs.readFileSync(PRODUCTS_FILE_PATH, 'utf8');
-            existingData = JSON.parse(fileContent || '[]'); // якщо файл пустий, використовуємо порожній масив
-        } catch (error) {
-            console.log('Error reading existing data, creating a new file.');
+        const fileExists = fs.existsSync(PRODUCTS_FILE_PATH);
+
+        if (fileExists) {
+            try {
+                const fileContent = fs.readFileSync(PRODUCTS_FILE_PATH, 'utf8');
+                existingData = JSON.parse(fileContent || '[]');
+            } catch (error) {
+                console.log('Error reading existing data, continuing with an empty array.');
+            }
+        }
+
+        const writeStream = fs.createWriteStream(PRODUCTS_FILE_PATH, {
+            flags: fileExists ? 'r+' : 'w',
+        });
+
+        if (!fileExists || existingData.length === 0) {
+            writeStream.write('[');
+        } else {
+            writeStream.write(',');
         }
 
         readStream
@@ -70,8 +83,14 @@ export class ProductService {
                 results.push(newProduct);
             })
             .on('end', () => {
-                const combinedData = [...existingData, ...results];
-                fs.writeFileSync(PRODUCTS_FILE_PATH, JSON.stringify(combinedData, null, 2)); // Перезаписуємо весь масив
+                results.forEach((product, index) => {
+                    const productData = JSON.stringify(product);
+                    writeStream.write(productData + (index < results.length - 1 ? ',' : ''));
+                });
+
+                writeStream.write(']');
+                writeStream.end();
+
                 resolve(results);
             })
             .on('error', (error) => {
