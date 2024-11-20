@@ -1,6 +1,6 @@
 import { UserRepository } from '../repository/userRepository';
 import { BadRequest } from '../error/errors';
-import bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { IUser, IUserData } from '../models/User'; // Імпорт вашої моделі `IUser`
 
 export class UserService {

@@ -1,0 +1,36 @@
+version: '3.9'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - LOG_FILE=dev.log
+      - JWT_SECRET=secret
+      - ADMIN_EMAIL=admin@example.com
+      - ADMIN_NAME=Admin
+      - ADMIN_PASSWORD=SecurePassword123!
+      - MONGODB_URI=mongodb://root:example@mongo:27017/mydatabase?authSource=admin
+    depends_on:
+      - mongo
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+  mongo:
+    image: mongo:6.0
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:
