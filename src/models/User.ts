@@ -9,6 +9,7 @@ export interface IUser extends Document {
   email: string;
   name: string;
   passwordHash: string;
+  password?: string;
   role: "ADMIN" | "CUSTOMER";
 }
 
