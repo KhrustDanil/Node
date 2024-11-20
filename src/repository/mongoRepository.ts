@@ -1,6 +1,6 @@
 import mongoose, { ConnectOptions } from 'mongoose';
 
-const connectDB = async (): Promise<void> => {
+export const connectDB = async (): Promise<void> => {
   try {
     const mongoURI = process.env.MONGODB_URI;
     if (!mongoURI) {
@@ -17,6 +17,11 @@ const connectDB = async (): Promise<void> => {
     console.error('MongoDB connection error:', error);
     process.exit(1);
   }
+};
+
+export const disconnectDB = async () => {
+  await mongoose.disconnect();
+  console.log('Disconnected from MongoDB');
 };
 
 export default connectDB;
