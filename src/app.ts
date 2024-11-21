@@ -7,6 +7,22 @@ import { createAdmin } from './createAdmid';
 import { errorHandler } from './middleware/errorHandler';
 import dotenv from 'dotenv';
 import connectDB from './repository/mongoRepository';
+import swaggerJSDoc from 'swagger-jsdoc';
+import * as swaggerUi from 'swagger-ui-express';
+
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'User API',
+      version: '1.0.0',
+      description: 'API documentation for user-related operations',
+    },
+  },
+  apis: ['./src/routes/**/*.ts']
+};
+
+const swaggerSpec: any = swaggerJSDoc(swaggerOptions);
 
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
 dotenv.config({ path: envFile });
@@ -18,6 +34,7 @@ connectDB()
 
 createAdmin();
 
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(express.json());
 
 app.use('/api/products', productRoutes);
