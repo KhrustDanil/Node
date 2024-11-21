@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export enum UserRole {
     ADMIN = 'ADMIN',
@@ -6,6 +6,7 @@ export enum UserRole {
   }
 
 export interface IUser extends Document {
+  _id: Types.ObjectId; // Додано обов'язкове поле _id
   email: string;
   name: string;
   passwordHash: string;

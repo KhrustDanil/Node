@@ -1,7 +1,16 @@
-import { Schema, model, Types } from 'mongoose';
+import mongoose, { Schema, model, Types } from 'mongoose';
+
+
+export interface INewProduct {
+  _id: Types.ObjectId;
+  name: string;
+  description: string;
+  category: string;
+  price: number;
+}
 
 export interface IProduct {
-  _id?: Types.ObjectId; // Чітке визначення типу ObjectId
+  _id?: Types.ObjectId;
   name: string;
   description: string;
   category: string;
